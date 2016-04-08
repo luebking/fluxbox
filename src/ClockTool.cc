@@ -54,11 +54,11 @@ int showSeconds(const std::string& fmt) {
                     fmt, '%', SWITCHES_SECONDS, sizeof(SWITCHES_SECONDS), 0) != std::string::npos;
 }
 
-uint64_t calcNextTimeout(const std::string& fmt) {
+uint64_t calcNextTimeout(const std::string& fmt, const std::string *fmt2) {
 
     uint64_t now = FbTk::FbTime::system();
     uint64_t unit = FbTk::FbTime::IN_SECONDS;
-    if (!showSeconds(fmt)) { // microseconds till next full minute
+    if (!showSeconds(fmt) && !(fmt2 && showSeconds(*fmt2))) { // microseconds till next full minute
          unit *= 60L;
     }
     return FbTk::FbTime::remainingNext(now, unit);
@@ -138,12 +138,14 @@ ClockTool::ClockTool(const FbTk::FbWindow &parent,
                      FbTk::ThemeProxy<ToolTheme> &theme, BScreen &screen,
                      FbTk::Menu &menu):
     ToolbarItem(ToolbarItem::FIXED),
-    m_button(parent, theme->font(), FbTk::BiDiString("")),
+    TextButton(parent, theme->font(), FbTk::BiDiString("")),
     m_theme(theme),
     m_screen(screen),
     m_pixmap(0),
     m_timeformat(screen.resourceManager(), std::string("%k:%M"),
                  screen.name() + ".strftimeFormat", screen.altName() + ".StrftimeFormat"),
+    m_toolformat(screen.resourceManager(), std::string("%A, %e. %B"),
+                 screen.name() + ".strftimeDetailFormat", screen.altName() + ".StrftimeDetailFormat"),
     m_stringconvertor(FbTk::StringConvertor::ToFbString) {
     // attach signals
     m_tracker.join(theme.reconfigSig(), FbTk::MemFun(*this, &ClockTool::updateTime));
@@ -161,7 +163,7 @@ ClockTool::ClockTool(const FbTk::FbWindow &parent,
                                                                                     &ClockTool::updateTime));
     m_timer.setCommand(update_graphic);
 
-    m_button.setGC(m_theme->textGC());
+    setGC(m_theme->textGC());
 
     // setup menu
     FbTk::RefCount<FbTk::Command<void> > saverc(FbTk::CommandParser<void>::instance().parse("saverc"));
@@ -178,31 +180,35 @@ ClockTool::~ClockTool() {
     // remove cached pixmap
     if (m_pixmap)
         m_screen.imageControl().removeImage(m_pixmap);
+    if (m_has_tooltip)
+        m_screen.hideTooltip();
 }
 
-void ClockTool::move(int x, int y) {
-    m_button.move(x, y);
+void ClockTool::enterNotifyEvent(XCrossingEvent &ev) {
+    if (!m_toolString.empty()) {
+        m_has_tooltip = true;
+        m_screen.showTooltip(m_toolString);
+        updateTime();
+    }
+}
+
+void ClockTool::leaveNotifyEvent(XCrossingEvent &ev) {
+    m_has_tooltip = false;
+    m_screen.hideTooltip();
+    updateTime();
 }
 
 void ClockTool::resize(unsigned int width, unsigned int height) {
-    m_button.resize(width, height);
+    TextButton::resize(width, height);
     reRender();
-    m_button.clear();
+    TextButton::clear();
 }
 
 void ClockTool::moveResize(int x, int y,
                       unsigned int width, unsigned int height) {
-    m_button.moveResize(x, y, width, height);
+    TextButton::moveResize(x, y, width, height);
     reRender();
-    m_button.clear();
-}
-
-void ClockTool::show() {
-    m_button.show();
-}
-
-void ClockTool::hide() {
-    m_button.hide();
+    TextButton::clear();
 }
 
 void ClockTool::setTimeFormat(const std::string &format) {
@@ -216,7 +222,7 @@ void ClockTool::themeReconfigured() {
     // relatively static. if we replace all text with zeros then widths of
     // proportional fonts with some strftime formats will be considerably off.
 
-    const FbTk::FbString& t = m_button.text().logical();
+    const FbTk::FbString& t = text().logical();
     const size_t s = t.size();
     size_t i;
     FbTk::FbString text(s + 2, '0'); // +2 for extra padding
@@ -226,28 +232,16 @@ void ClockTool::themeReconfigured() {
             text[i] = t[i];
     }
 
-    unsigned int new_width = m_button.width();
-    unsigned int new_height = m_button.height();
+    unsigned int new_width = width();
+    unsigned int new_height = height();
     translateSize(orientation(), new_width, new_height);
     new_width = m_theme->font().textWidth(text.c_str(), text.size());
     translateSize(orientation(), new_width, new_height);
-    if (new_width != m_button.width() || new_height != m_button.height()) {
+    if (new_width != width() || new_height != height()) {
         resize(new_width, new_height);
         resizeSig().emit();
     }
 
-}
-
-unsigned int ClockTool::borderWidth() const {
-    return m_button.borderWidth();
-}
-
-unsigned int ClockTool::width() const {
-    return m_button.width();
-}
-
-unsigned int ClockTool::height() const {
-    return m_button.height();
 }
 
 void ClockTool::updateTime() {
@@ -277,12 +271,21 @@ void ClockTool::updateTime() {
 
 #ifdef HAVE_STRFTIME
 
+        if (strftime(buf, sizeof(buf), m_toolformat->c_str(), type)) {
+            text = m_stringconvertor.recode(buf);
+            if (m_has_tooltip && text != m_toolString)
+                m_screen.showTooltip(text);
+            m_toolString = text;
+        } else {
+            m_toolString.clear();
+        }
+
         len = strftime(buf, sizeof(buf), m_timeformat->c_str(), type);
         if (len == 0)
             goto restart_timer;
 
         text = m_stringconvertor.recode(buf);
-        if (m_button.text().logical() == text) {
+        if (TextButton::text().logical() == text) {
             goto restart_timer;
         }
 
@@ -290,17 +293,17 @@ void ClockTool::updateTime() {
         //        sprintf(time_string, "%d:%d", );
 #endif // HAVE_STRFTIME
 
-        m_button.setText(text);
+        TextButton::setText(text);
         themeReconfigured();
     }
 
 restart_timer:
-    m_timer.setTimeout(calcNextTimeout(*m_timeformat), true);
+    m_timer.setTimeout(calcNextTimeout(*m_timeformat, m_has_tooltip ? &(*m_toolformat) : 0), true);
 }
 
 // Just change things that affect the size
 void ClockTool::updateSizing() {
-    m_button.setBorderWidth(m_theme->border().width());
+    TextButton::setBorderWidth(m_theme->border().width());
     themeReconfigured();
 }
 
@@ -311,26 +314,21 @@ void ClockTool::reRender() {
     if (m_theme->texture().usePixmap()) {
         m_pixmap = m_screen.imageControl().renderImage(width(), height(),
                                                        m_theme->texture(), orientation());
-        m_button.setBackgroundPixmap(m_pixmap);
+        setBackgroundPixmap(m_pixmap);
     } else {
         m_pixmap = 0;
-        m_button.setBackgroundColor(m_theme->texture().color());
+        setBackgroundColor(m_theme->texture().color());
     }
 }
 
 
 void ClockTool::renderTheme(int alpha) {
-    m_button.setAlpha(alpha);
-    m_button.setJustify(m_theme->justify());
+    setAlpha(alpha);
+    setJustify(m_theme->justify());
 
     reRender();
 
-    m_button.setBorderWidth(m_theme->border().width());
-    m_button.setBorderColor(m_theme->border().color());
-    m_button.clear();
-}
-
-void ClockTool::setOrientation(FbTk::Orientation orient) {
-    m_button.setOrientation(orient);
-    ToolbarItem::setOrientation(orient);
+    setBorderWidth(m_theme->border().width());
+    setBorderColor(m_theme->border().color());
+    clear();
 }

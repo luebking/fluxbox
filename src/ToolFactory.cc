@@ -83,6 +83,25 @@ ToolbarItem *ToolFactory::create(const std::string &name, const FbTk::FbWindow &
     if (tbar.theme()->buttonSize() > 0)
         button_size = tbar.theme()->buttonSize();
 
+    auto parseButtonActions = [&](FbTk::TextButton *btn){
+        std::string cmd_str = FbTk::Resource<std::string>
+                              (m_screen.resourceManager(), "",
+                               m_screen.name() + ".toolbar." + name + ".commands",
+                               m_screen.altName() + ".Toolbar." + name + ".Commands");
+        std::list<std::string> commands;
+        FbTk::StringUtil::stringtok(commands, cmd_str, ":");
+        std::list<std::string>::iterator it = commands.begin();
+        int i = 1;
+        for (; it != commands.end(); ++it, ++i) {
+            std::string cmd_str = *it;
+            FbTk::StringUtil::removeTrailingWhitespace(cmd_str);
+            FbTk::StringUtil::removeFirstWhitespace(cmd_str);
+            FbTk::RefCount<FbTk::Command<void> > cmd(cp.parse(cmd_str));
+            if (cmd)
+                btn->setOnClick(cmd, i);
+        }
+    };
+
     if (name == "workspacename") {
         WorkspaceNameTool *witem = new WorkspaceNameTool(parent,
                                                         *m_workspace_theme, screen());
@@ -100,6 +119,7 @@ ToolbarItem *ToolFactory::create(const std::string &name, const FbTk::FbWindow &
 #endif
     } else if (name == "clock") {
         item = new ClockTool(parent, m_clock_theme, screen(), tbar.menu());
+        parseButtonActions(static_cast<ClockTool*>(item));
     } else if (name.find("spacer") == 0) {
         int size = -1;
         if (name.size() > 6) { // spacer_20 creates a 20px spacer
@@ -120,23 +140,7 @@ ToolbarItem *ToolFactory::create(const std::string &name, const FbTk::FbWindow &
             return 0;
         FbTk::TextButton *btn = new FbTk::TextButton(parent, m_button_theme->font(), label);
         screen().mapToolButton(name, btn);
-
-        std::string cmd_str = FbTk::Resource<std::string>
-                              (m_screen.resourceManager(), "",
-                               m_screen.name() + ".toolbar." + name + ".commands",
-                               m_screen.altName() + ".Toolbar." + name + ".Commands");
-        std::list<std::string> commands;
-        FbTk::StringUtil::stringtok(commands, cmd_str, ":");
-        std::list<std::string>::iterator it = commands.begin();
-        int i = 1;
-        for (; it != commands.end(); ++it, ++i) {
-            std::string cmd_str = *it;
-            FbTk::StringUtil::removeTrailingWhitespace(cmd_str);
-            FbTk::StringUtil::removeFirstWhitespace(cmd_str);
-            FbTk::RefCount<FbTk::Command<void> > cmd(cp.parse(cmd_str));
-            if (cmd)
-                btn->setOnClick(cmd, i);
-        }
+        parseButtonActions(btn);
         item = new ButtonTool(btn, ToolbarItem::FIXED,
                               dynamic_cast<ButtonTheme &>(*m_button_theme),
                               screen().imageControl());
