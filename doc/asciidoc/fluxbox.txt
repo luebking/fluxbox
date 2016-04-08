@@ -1020,6 +1020,12 @@ This adjusts the way the current time is displayed in the toolbar. The
 +
 Default: *%k:%M*
 
+*session.screen0.strftimeDetailFormat*: 'date'::
+This adjusts the way the current time is displayed in the clocks tooltip. The
+*strftime(3)* format is used. An empty string disables the tooltip.
++
+Default: *"%A, %e. %B*
+
 *session.screen0.tabs.intitlebar*: 'boolean'::
 This specifies whether tabs should be embedded in the titlebar or placed
 outside the window.

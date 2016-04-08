@@ -41,29 +41,31 @@ class Menu;
 template <class T> class ThemeProxy;
 }
 
-class ClockTool:public ToolbarItem {
+class ClockTool:public ToolbarItem, public FbTk::TextButton {
 public:
     ClockTool(const FbTk::FbWindow &parent, FbTk::ThemeProxy<ToolTheme> &theme,
               BScreen &screen, FbTk::Menu &menu);
     virtual ~ClockTool();
 
-    void move(int x, int y);
+    void enterNotifyEvent(XCrossingEvent &ev);
+    void leaveNotifyEvent(XCrossingEvent &ev);
+    void move(int x, int y) { TextButton::move(x,y); }
     void resize(unsigned int width, unsigned int height);
     void moveResize(int x, int y,
                     unsigned int width, unsigned int height);
 
-    void show();
-    void hide();
+    void show() { TextButton::show(); }
+    void hide() { TextButton::hide(); }
     void setTimeFormat(const std::string &format);
     // accessors
-    unsigned int width() const;
-    unsigned int height() const;
-    unsigned int borderWidth() const;
+    unsigned int width() const { return TextButton::width(); }
+    unsigned int height() const { return TextButton::height(); }
+    unsigned int borderWidth() const { return TextButton::borderWidth(); }
     const std::string &timeFormat() const { return *m_timeformat; }
 
-    void setOrientation(FbTk::Orientation orient);
-
-    void parentMoved() { m_button.parentMoved(); }
+    void parentMoved() { FbTk::TextButton::parentMoved(); }
+    using FbTk::TextButton::setOrientation;
+    using ToolbarItem::orientation;
 
 private:
     void updateTime();
@@ -72,16 +74,17 @@ private:
     void reRender();
     void updateSizing();
 
-    FbTk::TextButton                    m_button;
-
     const FbTk::ThemeProxy<ToolTheme>&  m_theme;
     BScreen&                            m_screen;
     Pixmap                              m_pixmap;
     FbTk::Timer                         m_timer;
 
     FbTk::Resource<std::string>         m_timeformat;
+    FbTk::Resource<std::string>         m_toolformat;
     FbTk::StringConvertor               m_stringconvertor;
     FbTk::SignalTracker                 m_tracker;
+    bool                                m_has_tooltip;
+    std::string                         m_toolString;
 };
 
 #endif // CLOCKTOOL_HH
