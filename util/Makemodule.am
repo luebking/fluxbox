@@ -1,6 +1,7 @@
 # util/Makefile.am for Fluxbox
 
 bin_SCRIPTS = \
+    util/fbdisks \
 	util/fbsetbg \
 	util/fluxbox-generate_menu \
 	util/startfluxbox
