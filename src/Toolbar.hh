@@ -53,6 +53,7 @@ class ToolbarItem;
 namespace FbTk {
 class ImageControl;
 class Shape;
+class TextButton;
 }
 
 /// The toolbar.
@@ -99,6 +100,7 @@ public:
     void handleEvent(XEvent &event);
     //@}
 
+    void relayout();
     void reconfigure();
     void setPlacement(Placement where);
 
