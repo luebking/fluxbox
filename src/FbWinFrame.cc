@@ -178,7 +178,7 @@ bool FbWinFrame::setTabMode(TabMode tabmode) {
         alignTabs();
 
         // TODO: tab position
-        if (m_use_tabs && m_visible)
+        if (m_use_tabs && m_visible && tabs.size() > 1)
             tabs.show();
         else {
             ret = false;
@@ -581,11 +581,14 @@ void FbWinFrame::createTab(FbTk::Button &button) {
     FbTk::EventManager::instance()->add(button, button.window());
 
     m_tab_container.insertItem(&button);
+    showTabs();
 }
 
 void FbWinFrame::removeTab(IconButton *btn) {
     if (m_tab_container.removeItem(btn))
         delete btn;
+    if (m_tab_container.size() < 2)
+        hideTabs();
 }
 
 
@@ -674,6 +677,12 @@ bool FbWinFrame::hideTabs() {
 }
 
 bool FbWinFrame::showTabs() {
+    if (m_tabmode != INTERNAL && tabcontainer().size() < 2) {
+        bool old = m_use_tabs;
+        m_use_tabs = false;
+        return old != m_use_tabs;
+    }
+
     if (m_tabmode == INTERNAL || m_use_tabs) {
         m_use_tabs = true;
         return false; // nothing changed
