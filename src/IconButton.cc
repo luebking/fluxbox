@@ -24,6 +24,7 @@
 #include "IconbarTool.hh"
 #include "IconbarTheme.hh"
 
+#include "FbAtoms.hh"
 #include "Screen.hh"
 #include "Window.hh"
 
@@ -33,6 +34,7 @@
 #include "FbTk/ImageControl.hh"
 #include "FbTk/TextUtils.hh"
 
+#include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -71,6 +73,11 @@ IconButton::IconButton(const FbTk::FbWindow &parent,
 
     FbTk::EventManager::instance()->add(*this, m_icon_window);
 
+static const unsigned char fullbyte = 0xff; // highest possible version - we only care about enter messages
+    XChangeProperty(FbTk::App::instance()->display(), window(),
+                        FbAtoms::instance()->getDndAwareAtom(), XA_ATOM, 32,
+                        PropModeReplace, &fullbyte, 1);
+
     reconfigTheme();
     refreshEverything(false);
 }
@@ -97,6 +104,11 @@ void IconButton::enterNotifyEvent(XCrossingEvent &ev) {
 void IconButton::leaveNotifyEvent(XCrossingEvent &ev) {
     m_has_tooltip = false;
     m_win.screen().hideTooltip();
+}
+
+void IconButton::handleEvent(XEvent &event) {
+    if (event.type == ClientMessage && event.xclient.message_type == FbAtoms::instance()->getDndEnterAtom() && m_win.fbwindow())
+        m_win.fbwindow()->raise();
 }
 
 void IconButton::moveResize(int x, int y,
