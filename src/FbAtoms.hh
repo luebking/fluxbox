@@ -39,6 +39,14 @@ public:
 
     Atom getMWMHintsAtom() const { return motif_wm_hints; }
 
+    Atom getDndAwareAtom() const { return dnd_aware; }
+    Atom getDndEnterAtom() const { return dnd_enter; }
+    Atom getDndLeaveAtom() const { return dnd_leave; }
+    bool isDndMessage(Atom &a) const {
+        return a == dnd_enter || a == dnd_position || a == dnd_status ||
+               a == dnd_leave || a == dnd_drop || a == dnd_finished;
+    }
+
     // these atoms are for normal app->WM interaction beyond the scope of the
     // ICCCM...
     Atom getFluxboxAttributesAtom() const { return blackbox_attributes; }
@@ -54,6 +62,9 @@ private:
     Atom xa_wm_delete_window;
     Atom xa_wm_take_focus;
     Atom xa_wm_change_state;
+    Atom dnd_aware;
+    Atom dnd_enter;
+    Atom dnd_position, dnd_status, dnd_leave, dnd_drop, dnd_finished;
 };
 
 #endif //FBATOMS_HH

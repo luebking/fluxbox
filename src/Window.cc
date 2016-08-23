@@ -576,6 +576,18 @@ void FluxboxWindow::init() {
 
     setFocusFlag(false); // update graphics before mapping
 
+    // listen to DnD events
+    static const unsigned char fullbyte = 0xff; // highest possible version
+    // NOTICE: Xdnd will send the message to the root child with the highest
+    // supported version. We ensure to be that, but this mandates to xsendevent
+    // a manipulated event to the client (in order to receive the DnD as well)
+    // TODO!! in theory, this could make clients use incompatible protocols
+    // ideally, we should not announce higher protocols than m_client
+    // watch out for bug reports (the protocol doesn't evolve that fast ;-)
+    XChangeProperty(FbTk::App::instance()->display(), fbWindow().window(),
+                        FbAtoms::instance()->getDndAwareAtom(), XA_ATOM, 32,
+                        PropModeReplace, &fullbyte, 1);
+
     if (m_state.stuck) {
         m_state.stuck = false;
         stick();
@@ -2034,6 +2046,19 @@ void FluxboxWindow::handleEvent(XEvent &event) {
 
     }
         break;
+    case ClientMessage: {
+        if (event.xclient.message_type == FbAtoms::instance()->getDndEnterAtom()) {
+            m_timer.start(); // autoraise with delay
+        } else if (event.xclient.message_type == FbAtoms::instance()->getDndLeaveAtom()) {
+            m_timer.stop();
+        }
+        if (m_client && FbAtoms::instance()->isDndMessage(event.xclient.message_type)) {
+            // we "steal" those messages from the reparented clients, so we must forward them
+            // otherwise actual DnD would be broken
+            event.xclient.window = m_client->window();
+            XSendEvent(m_client->display(), m_client->window(), false, NoEventMask, &event);
+        }
+    }
 
     default:
 #ifdef SHAPE

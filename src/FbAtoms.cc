@@ -40,6 +40,15 @@ FbAtoms::FbAtoms() {
     motif_wm_info = XInternAtom(dpy, "_MOTIF_WM_INFO", False);
     motif_wm_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
 
+    dnd_aware = XInternAtom(dpy, "XdndAware", False);
+    dnd_enter = XInternAtom(dpy, "XdndEnter", False);
+    // theses are only required to check whether it's a DnD message
+    dnd_position = XInternAtom(dpy, "XdndPosition", False);
+    dnd_status = XInternAtom(dpy, "XdndStatus", False);
+    dnd_leave = XInternAtom(dpy, "XdndLeave", False);
+    dnd_drop = XInternAtom(dpy, "XdndDrop", False);
+    dnd_finished = XInternAtom(dpy, "XdndFinished", False);
+
     blackbox_attributes = XInternAtom(dpy, "_BLACKBOX_ATTRIBUTES", False);
 
     s_singleton = this;
