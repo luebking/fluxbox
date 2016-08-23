@@ -47,6 +47,7 @@ public:
     void exposeEvent(XExposeEvent &event);
     void enterNotifyEvent(XCrossingEvent &ce);
     void leaveNotifyEvent(XCrossingEvent &ce);
+    void handleEvent(XEvent &event);
     void clear();
     void clearArea(int x, int y,
                    unsigned int width, unsigned int height,
