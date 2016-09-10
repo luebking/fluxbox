@@ -331,6 +331,10 @@ BScreen::BScreen(FbTk::ResourceManager &rm,
     m_tracker.join(focusedWinFrameTheme()->reconfigSig(),
             FbTk::MemFun(*this, &BScreen::focusedWinFrameThemeReconfigured));
 
+    FbTk::RefCount<FbTk::Command<void> > refresh_cmd(new FbTk::SimpleCommand<BScreen>(*this, &BScreen::p_refresh));
+    m_refreshTimer.setCommand(refresh_cmd);
+    m_refreshTimer.fireOnce(true);
+
 
     renderGeomWindow();
     renderPosWindow();
@@ -1331,6 +1335,36 @@ void BScreen::initMenus() {
     m_windowmenu->reloadHelper()->setMainFile(windowMenuFilename());
 }
 
+void BScreen::p_refresh() {
+    Visual visual;
+    visual.visualid = CopyFromParent;
+
+    XSetWindowAttributes xswa;
+    xswa.background_pixmap = None;
+    xswa.override_redirect = True;
+    xswa.backing_store = NotUseful;
+    xswa.save_under = False;
+
+    Window win = XCreateWindow(FbTk::App::instance()->display(), m_root_window.window(),
+                               m_root_window.x(), m_root_window.y(),
+                               m_root_window.width(), m_root_window.height(),
+                               0, m_root_window.depth(),
+                               InputOutput, &visual,
+                               CWBackPixmap|CWOverrideRedirect|CWBackingStore|CWSaveUnder, &xswa);
+    XMapWindow(FbTk::App::instance()->display(), win);
+    XDestroyWindow(FbTk::App::instance()->display(), win);
+    m_refresh_sig.emit();
+}
+
+void BScreen::refresh(unsigned int delay) {
+    m_refreshTimer.stop();
+    if (delay > 0) {
+        m_refreshTimer.setTimeout(delay * FbTk::FbTime::IN_MILLISECONDS);
+        m_refreshTimer.start();
+    } else {
+        p_refresh();
+    }
+}
 
 void BScreen::rereadMenu() {
 

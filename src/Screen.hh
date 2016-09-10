@@ -40,6 +40,7 @@
 #include "FbTk/NotCopyable.hh"
 #include "FbTk/Signal.hh"
 #include "FbTk/RelCalcHelper.hh"
+#include "FbTk/Timer.hh"
 
 #include "FocusControl.hh"
 
@@ -213,6 +214,7 @@ public:
     ScreenSignal &reconfigureSig() { return m_reconfigure_sig; }
     ScreenSignal &resizeSig() { return m_resize_sig; }
     ScreenSignal &bgChangeSig() { return m_bg_change_sig; }
+    FbTk::Signal<> &refreshSig() { return m_refresh_sig; }
     //@}
 
     void propertyNotify(Atom atom);
@@ -357,6 +359,10 @@ public:
     void reconfigure();
     void reconfigureTabs();
     void reconfigureStruts();
+    /**
+    Repaint the entire desktop, optionally wait few ms before doing so
+    */
+    void refresh(unsigned int delay = 0);
     void rereadMenu();
     void rereadWindowMenu();
     void shutdown();
@@ -464,6 +470,7 @@ public:
     int calRelativeDimensionHeight(int head, int i);
 
 private:
+    void p_refresh();
     void setupConfigmenu(FbTk::Menu &menu);
     void renderGeomWindow();
     void renderPosWindow();
@@ -487,6 +494,7 @@ private:
     ScreenSignal m_workspacecount_sig; ///< workspace count signal
     ScreenSignal m_currentworkspace_sig; ///< current workspace signal
     ScreenSignal m_workspacenames_sig; ///< workspace names signal
+    FbTk::Signal<> m_refresh_sig; ///< screen was cleared
 
     FbTk::MultLayers m_layermanager;
 
@@ -563,6 +571,8 @@ private:
         bool managed;
     } m_state;
     unsigned int m_opts; // hold Fluxbox::OPT_SLIT etc
+
+    FbTk::Timer m_refreshTimer;
 };
 
 
