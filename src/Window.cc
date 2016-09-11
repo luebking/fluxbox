@@ -3005,7 +3005,6 @@ void FluxboxWindow::startMoving(int x, int y) {
     m_last_move_x = frame().x();
     m_last_move_y = frame().y();
     if (! screen().doOpaqueMove()) {
-        fluxbox->grab();
         parent().drawRectangle(screen().rootTheme()->opGC(),
                                frame().x(), frame().y(),
                                frame().width() + 2*frame().window().borderWidth()-1,
@@ -3021,17 +3020,13 @@ void FluxboxWindow::stopMoving(bool interrupted) {
     fluxbox->maskWindowEvents(0, 0);
 
     if (! screen().doOpaqueMove()) {
-        parent().drawRectangle(screen().rootTheme()->opGC(),
-                               m_last_move_x, m_last_move_y,
-                               frame().width() + 2*frame().window().borderWidth()-1,
-                               frame().height() + 2*frame().window().borderWidth()-1);
         if (!interrupted) {
             moveResize(m_last_move_x, m_last_move_y, frame().width(), frame().height());
             if (m_workspace_number != screen().currentWorkspaceID())
                 screen().sendToWorkspace(screen().currentWorkspaceID(), this);
             focus();
         }
-        fluxbox->ungrab();
+        screen().refresh(); // clear XOR artifacts
     } else if (!interrupted) {
         moveResize(frame().x(), frame().y(), frame().width(), frame().height(), true);
         frame().notifyMoved(true);
@@ -3324,11 +3319,6 @@ void FluxboxWindow::startResizing(int x, int y, ReferenceCorner dir) {
 void FluxboxWindow::stopResizing(bool interrupted) {
     resizing = false;
 
-    parent().drawRectangle(screen().rootTheme()->opGC(),
-                           m_last_resize_x, m_last_resize_y,
-                           m_last_resize_w - 1 + 2 * frame().window().borderWidth(),
-                           m_last_resize_h - 1 + 2 * frame().window().borderWidth());
-
     screen().hideGeometry();
 
     if (!interrupted) {
@@ -3337,7 +3327,7 @@ void FluxboxWindow::stopResizing(bool interrupted) {
         moveResize(m_last_resize_x, m_last_resize_y,
                    m_last_resize_w, m_last_resize_h);
     }
-
+    screen().refresh();
     ungrabPointer(CurrentTime);
 }
 

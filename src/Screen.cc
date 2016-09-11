@@ -967,8 +967,7 @@ void BScreen::changeWorkspaceID(unsigned int id, bool revert) {
 
     FluxboxWindow *focused = FocusControl::focusedFbWindow();
 
-    if (focused && focused->isMoving() && doOpaqueMove())
-        // don't reassociate if not opaque moving
+    if (focused && focused->isMoving())
         reassociateWindow(focused, id, true);
 
     // set new workspace
