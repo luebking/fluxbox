@@ -408,6 +408,12 @@ void FbRun::tabComplete(const std::vector<std::string> &list, int &currentItem, 
     else
         ++split; // skip space
     std::string prefix = text().substr(split, m_completion_pos - split);
+    if (prefix.at(0) == '~') {
+        if (prefix.size() < 2)
+            prefix.append("'");
+        else if (prefix.at(1) != '\'')
+            prefix.insert(1, "'");
+    }
 
     if (currentItem < 0)
         currentItem = 0;
@@ -423,7 +429,8 @@ void FbRun::tabComplete(const std::vector<std::string> &list, int &currentItem, 
             if (++item >= list.size())
                 item = 0;
         }
-        if (list.at(item).find(prefix) == 0) {
+        const int pos = list.at(item).find(prefix);
+        if (pos == 0 || (pos == 1 && list.at(item).at(0) == '\'')) {
             setText(FbTk::BiDiString(text().substr(0, split) + list.at(item)));
             if (item == currentItem) {
                 cursorEnd();
@@ -459,10 +466,19 @@ void FbRun::tabCompleteApps() {
         XBell(m_display, 0);
         return;
     }
-    if (prefix.at(0) == '/' || prefix.at(0) == '.' || prefix.at(0) == '~') {
+    const int quoted = (prefix.size() > 1 && prefix.at(0) == '\'') ? 1 : 0;
+    if (prefix.at(quoted) == '/' || prefix.at(quoted) == '.' || prefix.at(quoted) == '~') {
         // we're completing a directory, find subdirs
         split = prefix.find_last_of('/');
-        prefix = prefix.substr(0, split+1);
+        if (split == std::string::npos) {
+            split = prefix.size();
+            prefix.append("/");
+        }
+        if (prefix.at(0) == '~' && prefix.size() > 1 && prefix.at(1) == '\'')
+            prefix = "~" + prefix.substr(2, split+1-2);
+        else
+            prefix = prefix.substr(quoted, split+1-quoted);
+
         if (prefix != m_last_completion_path) {
             m_files.clear();
             m_current_files_item = -1;
@@ -470,8 +486,12 @@ void FbRun::tabCompleteApps() {
 
             FbTk::Directory dir;
             std::string path = prefix;
-            if (path.at(0) == '~')
+            if (path.at(0) == '~') {
                 path.replace(0,1,getenv("HOME"));
+                prefix.size() > 1 ? prefix.insert(1, "'") : prefix.append("'");
+            } else {
+                prefix.insert(0, "'");
+            }
             dir.open(path.c_str());
             int n = dir.entries();
             while (--n > -1) {
@@ -479,9 +499,9 @@ void FbRun::tabCompleteApps() {
                 if (entry == "." || entry == "..")
                     continue;
                 if (FbTk::FileUtil::isDirectory(std::string(path + entry).c_str()))
-                    m_files.push_back(prefix + entry + "/");
+                    m_files.push_back(prefix + entry + "/'");
                 else
-                    m_files.push_back(prefix + entry);
+                    m_files.push_back(prefix + entry + "'");
             }
             dir.close();
             sort(m_files.begin(), m_files.end());
